@@ -1,2 +1,2 @@
-# wallapop_rss
+# wallapop-rss
 Wallapop items tracker by RSS
