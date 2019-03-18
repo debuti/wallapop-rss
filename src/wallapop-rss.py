@@ -33,7 +33,7 @@ def json2rss(dlout):
     for item in json_object['items']:
         rss += "<item>" + "\n"
         rss += "<title>(" + item['price'] + ") " + item['title'] + "</title>" + "\n"
-//        rss += "<pubDate>" + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(item['publishDate'])) + "</pubDate>" + "\n"
+#       rss += "<pubDate>" + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(item['publishDate'])) + "</pubDate>" + "\n"
         rss += "<guid isPermaLink='false'>" + item['itemUUID'] + "</guid>" + "\n"
         rss += "<link>https://es.wallapop.com/item/" + item['url']  + "</link>" + "\n"
         rss += "<description>" + item['description'] + "\nPrice: " + item['price'] + "</description>" + "\n"
