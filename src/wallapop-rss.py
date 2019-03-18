@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''
-Script to convert json data to rss data
+Script to convert json data to rss data. Thanks to https://salvacarrion.github.io/data/analysis/2018/05/17/mining-in-wallapop.html for the previous work
 '''
 
 ##TODO:
@@ -11,6 +11,8 @@ import os
 import requests
 import json
 import time
+import html
+import urllib.parse
 from flask import Flask #pip3 install Flask
 from flask import flash, redirect, render_template, request, session, abort, Response, send_from_directory
 
@@ -25,9 +27,9 @@ app = Flask(__name__)
 def json2rss(dlout):
     '''Turns the json returned by wallapop to a rss 2.0 feed'''
     rss = '<?xml version="1.0"?><rss version="2.0">' + "\n";
-    rss += '<channel><title>Wallapop RSS</title>' + "\n";
-    rss += '<link>'+dlout["host"]+'</link>' + "\n";
-    rss += '<description>Wallapop RSS for kws \"'+dlout["kws"]+'\"</description>' + "\n";
+    rss += '<channel><title>Wallapop RSS: \"' + dlout["kws"] + '\"</title>' + "\n";
+    rss += '<link>' + dlout["query"] + '</link>' + "\n";
+    rss += '<description>Wallapop RSS: \"' + dlout["kws"] + '\"</description>' + "\n";
     json_object = json.loads(dlout["result"])
 
     for item in json_object['items']:
@@ -42,21 +44,31 @@ def json2rss(dlout):
     rss += "</channel></rss>"
     return rss
 
-def download(host, kws, dist = 2000, lat = 40.456065, long = -3.715892):
+#def download(host, kws, dist = "2000", lat = "40.456065", lng = "-3.715892", minp = "0.0", maxp = "999999999"):
+def download(host, kws, dist, minp, maxp, lat, lng):
     '''
     '''
-    ENDPOINT='https://es.wallapop.com/rest/items?_p=1&kws={}&dist={}&latitude={}&longitude={}&publishDate=any&orderBy=creationDate&orderType=asc'
-    q = ENDPOINT.format(kws, dist, lat, long)
-    r = requests.get(q)
+    if not lat or not lng: raise ValueError('Latitude and Longitude are needed')
+
+    ENDPOINT='https://es.wallapop.com/rest/items?_p=1&kws={}&publishDate=any&orderBy=creationDate&orderType=asc'
+    q = ENDPOINT.format(urllib.parse.quote_plus(kws)) + \
+        ("&dist="+dist if dist else "") + \
+        ("&minPrice="+minp if minp else "") + \
+        ("&maxPrice="+maxp if maxp else "") + \
+        ("&latitude="+lat if lat else "") + \
+        ("&longitude="+lng if lng else "")
+    print(q)
+    r = requests.get(q, headers = {'cookie': 'searchLat='+lat+'; searchLng='+lng+';'})
+    #r = requests.get(q)
     if (r.status_code != 200 or
         r.headers['content-type'] != 'application/json;charset=UTF-8'):
-      return "Unable to download wallapop item list";
-    return {"query" : q,
+      raise RuntimeError("Unable to download wallapop item list");
+    return {"query" : html.escape(q),
             "host" : host,
             "kws" : kws,
             "dist" : dist,
             "lat" : lat,
-            "long" : long,
+            "lng" : lng,
             "result" : r.content};
 
 @app.route("/search")
@@ -64,6 +76,8 @@ def search():
 	return Response(json2rss(download(request.base_url,
                                       request.args.get('kws'),
                                       request.args.get('dist'),
+                                      request.args.get('minPrice'),
+                                      request.args.get('maxPrice'),
                                       request.args.get('lat'),
                                       request.args.get('long'))),
                     mimetype='application/rss+xml')
